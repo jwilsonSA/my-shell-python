@@ -1,4 +1,5 @@
 import sys
+import shutil
 
 
 def main():
@@ -31,6 +32,8 @@ def main():
                 target = parts[1]
                 if target in builtins:
                     print(f"{target} is a shell builtin")
+                elif path := shutil.which(target):
+                    print(f"{target} is {path}")
                 else:
                     print(f"{target}: not found")
             else:
