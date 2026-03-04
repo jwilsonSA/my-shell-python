@@ -23,17 +23,22 @@ def main():
         
         cmd = parts[0]
         
-        if cmd == "type":
-            # Extract what they are trying to chec, e.g., 'type echo'
+        if cmd == "exit 0": # Handle exit
+            break
+            
+        elif cmd == "echo":
+            # Join all parts after the first one with a space
+            print(" ".join(parts[1:]))
+            
+        elif cmd == "type":
             target = parts[1] if len(parts) > 1 else ""
             if target in builtins:
                 print(f"{target} is a shell builtin")
             else:
-                print(f"{target} not found")
-        elif cmd in builtins:
-            print(f"{cmd} is a shell builtin")
+                print(f"{target}: not found")
+                
         else:
-            print(f"{command} is not found")
+            print(f"{command}: not found")
     
 
 
