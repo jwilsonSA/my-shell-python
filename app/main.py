@@ -1,5 +1,6 @@
 import sys
 import shutil
+import subprocess
 
 
 def main():
@@ -41,7 +42,10 @@ def main():
                 pass
                 
         else:
-            print(f"{user_input}: not found")
+            if shutil.which(cmd):
+                subprocess.run(parts)
+            else:
+                print(f"{cmd}: not found")
     
 
 
