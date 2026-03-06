@@ -1,6 +1,7 @@
 import sys
 import shutil
 import subprocess
+import os
 
 
 def main():
@@ -10,7 +11,6 @@ def main():
         sys.stdout.write("$ ")
         sys.stdout.flush()
         
-        # .strip() removes any accidental leading/trailing spaces or newlines
         user_input = input().strip()
         
         if not user_input:
@@ -19,14 +19,14 @@ def main():
         parts = user_input.split()
         cmd = parts[0]
         
-        # Handle exit: check if the first word is 'exit'
         if cmd == "exit":
-            # The challenge usually expects an exit code. 
-            # If they type 'exit 0', we exit. If just 'exit', we also exit.
             sys.exit(0) 
             
         elif cmd == "echo":
             print(" ".join(parts[1:]))
+            
+        elif cmd == "pwd":
+            print(os.getcwd())
             
         elif cmd == "type":
             if len(parts) > 1:
@@ -38,7 +38,6 @@ def main():
                 else:
                     print(f"{target}: not found")
             else:
-                # Handle cases where user just types 'type' with no argument
                 pass
                 
         else:
