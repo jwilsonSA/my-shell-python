@@ -9,27 +9,36 @@ def main():
         sys.stdout.write("$ ")
         sys.stdout.flush()
         
-        user_input = input().strip()
-        
-        if not user_input:
+        try:
+            user_input = input()
+        except EOFError:
+            break
+            
+        if not user_input.strip():
             continue
         
-        parts = shlex.split(user_input)
+        try:
+            parts = shlex.split(user_input, posix=True)
+        except ValueError as e:
+            print(f"shell: {e}")
+            continue
+
+        if not parts:
+            continue
+
         cmd = parts[0]
         
         if cmd == "exit":
             sys.exit(0) 
             
         elif cmd == "echo":
-            # shlex has already removed the quotes from the individual parts
-            print(*(parts[1:])) # This is a cleaner way to print space-separated list items
+            print(*(parts[1:]))
             
         elif cmd == "pwd":
             print(os.getcwd())
             
         elif cmd == "cd":
             if len(parts) > 1:
-                # With shlex, parts[1] is already the full path even if it had quotes/spaces
                 target_path = os.path.expanduser(parts[1])
                 try:
                     os.chdir(target_path)
