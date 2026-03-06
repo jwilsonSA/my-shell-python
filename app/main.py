@@ -29,11 +29,11 @@ def main():
             print(os.getcwd())
             
         elif cmd == "cd":
-            if len(parts) > 1:
-                try:
-                    os.chdir(parts[1])
-                except FileNotFoundError:
-                    print(f"cd: {parts[1]}: No such file or directory")
+            path = parts[1] if len(parts) > 1 else "~"
+            try:
+                os.chdir(os.path.expanduser(path))
+            except FileNotFoundError:
+                print(f"cd: {path}: No such file or directory")
             else:
                 os.chdir(os.path.expanduser("~"))
             
