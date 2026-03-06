@@ -17,11 +17,7 @@ def main():
         if not user_input.strip():
             continue
         
-        try:
-            parts = shlex.split(user_input, posix=True)
-        except ValueError as e:
-            print(f"shell: {e}")
-            continue
+        parts = parse_args(user_input)
 
         if not parts:
             continue
