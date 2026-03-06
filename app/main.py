@@ -66,6 +66,47 @@ def main():
                 print(f"{cmd}: not found")
     
 
+def parse_args(input_str):
+    args = []
+    current = []
+    escaped = False
+    quote = None  # Tracks if we are in ' or "
+
+    for i, char in enumerate(input_str):
+        if escaped:
+            current.append(char)
+            escaped = False
+            continue
+
+        if char == '\\':
+            # In POSIX, \ inside "" only escapes specific chars ($, `, ", \, \n)
+            # Outside quotes, it escapes everything.
+            if quote == "'":
+                current.append(char)
+            else:
+                escaped = True
+            continue
+
+        if char in ("'", '"'):
+            if quote == char:
+                quote = None # Closing quote
+            elif quote is None:
+                quote = char # Opening quote
+            else:
+                current.append(char) # Inside the other type of quote
+            continue
+
+        if char == ' ' and quote is None:
+            if current:
+                args.append("".join(current))
+                current = []
+            continue
+
+        current.append(char)
+
+    if current:
+        args.append("".join(current))
+    return args
 
 if __name__ == "__main__":
     main()
