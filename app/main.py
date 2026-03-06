@@ -1,7 +1,5 @@
-import sys
-import shutil
-import subprocess
 import os
+import sys, shutil, shlex, subprocess
 
 
 def main():
