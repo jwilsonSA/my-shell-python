@@ -29,12 +29,18 @@ def main():
             print(os.getcwd())
             
         elif cmd == "cd":
-            path = parts[1] if len(parts) > 1 else "~"
-            try:
-                os.chdir(os.path.expanduser(path))
-            except FileNotFoundError:
-                print(f"cd: {path}: No such file or directory")
+            if len(parts) > 1:
+                # Join parts[1:] in case there are spaces in the directory name
+                target_path = " ".join(parts[1:])
+                # Expand ~ to home directory
+                target_path = os.path.expanduser(target_path)
+                
+                try:
+                    os.chdir(target_path)
+                except FileNotFoundError:
+                    print(f"cd: {target_path}: No such file or directory")
             else:
+                # Handle 'cd' with no arguments (go home)
                 os.chdir(os.path.expanduser("~"))
             
         elif cmd == "type":
