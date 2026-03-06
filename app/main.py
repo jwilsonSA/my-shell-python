@@ -14,31 +14,28 @@ def main():
         if not user_input:
             continue
         
-        parts = user_input.split()
+        parts = shlex.split(user_input)
         cmd = parts[0]
         
         if cmd == "exit":
             sys.exit(0) 
             
         elif cmd == "echo":
-            print(" ".join(parts[1:]))
+            # shlex has already removed the quotes from the individual parts
+            print(*(parts[1:])) # This is a cleaner way to print space-separated list items
             
         elif cmd == "pwd":
             print(os.getcwd())
             
         elif cmd == "cd":
             if len(parts) > 1:
-                # Join parts[1:] in case there are spaces in the directory name
-                target_path = " ".join(parts[1:])
-                # Expand ~ to home directory
-                target_path = os.path.expanduser(target_path)
-                
+                # With shlex, parts[1] is already the full path even if it had quotes/spaces
+                target_path = os.path.expanduser(parts[1])
                 try:
                     os.chdir(target_path)
                 except FileNotFoundError:
                     print(f"cd: {target_path}: No such file or directory")
             else:
-                # Handle 'cd' with no arguments (go home)
                 os.chdir(os.path.expanduser("~"))
             
         elif cmd == "type":
