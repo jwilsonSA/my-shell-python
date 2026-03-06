@@ -4,8 +4,8 @@ import subprocess
 
 
 def main():
-    builtins = ["echo", "exit", "type"]
-    
+    builtins = ["echo", "exit", "type", "pwd"]
+        
     while True:
         sys.stdout.write("$ ")
         sys.stdout.flush()
