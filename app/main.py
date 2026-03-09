@@ -66,39 +66,43 @@ def parse_args(input_str):
     args = []
     current = []
     escaped = False
-    quote = None  # Tracks if we are in ' or "
+    quote = None 
 
-    for i, char in enumerate(input_str):
+    i = 0
+    while i < len(input_str):
+        char = input_str[i]
+
         if escaped:
             current.append(char)
             escaped = False
-            continue
-
-        if char == '\\':
-            # In POSIX, \ inside "" only escapes specific chars ($, `, ", \, \n)
-            # Outside quotes, it escapes everything.
-            if quote == "'":
+        elif quote == "'":
+            if char == "'":
+                quote = None
+            else:
                 current.append(char)
+        elif quote == '"':
+            if char == '\\':
+                # Double quotes ONLY escape these specific characters in POSIX
+                if i + 1 < len(input_str) and input_str[i+1] in ('$', '`', '"', '\\', '\n'):
+                    escaped = True
+                else:
+                    current.append(char)
+            elif char == '"':
+                quote = None
             else:
+                current.append(char)
+        else:
+            if char == '\\':
                 escaped = True
-            continue
-
-        if char in ("'", '"'):
-            if quote == char:
-                quote = None # Closing quote
-            elif quote is None:
-                quote = char # Opening quote
+            elif char in ("'", '"'):
+                quote = char
+            elif char == ' ':
+                if current:
+                    args.append("".join(current))
+                    current = []
             else:
-                current.append(char) # Inside the other type of quote
-            continue
-
-        if char == ' ' and quote is None:
-            if current:
-                args.append("".join(current))
-                current = []
-            continue
-
-        current.append(char)
+                current.append(char)
+        i += 1
 
     if current:
         args.append("".join(current))
