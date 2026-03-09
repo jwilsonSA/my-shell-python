@@ -7,18 +7,15 @@ import readline
 def main():
     builtins = ["echo", "exit", "type", "pwd", "cd"]
         
-    # --- PATH-Aware Autocompletion Logic ---
+    ## SECTION: Autocompletion Configuration
     def completer(text, state):
         buffer = readline.get_line_buffer()
         
-        # Only autocomplete the first word (the command)
         if " " in buffer.lstrip():
             return None
 
-        # 1. Start with builtins
         candidates = [i for i in builtins if i.startswith(text)]
         
-        # 2. Add executables from PATH
         path_env = os.environ.get("PATH", "")
         for directory in path_env.split(":"):
             if os.path.isdir(directory):
@@ -30,7 +27,6 @@ def main():
                 except PermissionError:
                     continue
 
-        # 3. Deduplicate and sort
         options = sorted(list(set(candidates)))
 
         if state < len(options):
@@ -38,18 +34,16 @@ def main():
         return None
 
     readline.set_completer(completer)
-    # Ensure delimiters don't include spaces so 'echo ' is treated as one completed unit
     readline.set_completer_delims('\t\n') 
     
     if 'libedit' in readline.__doc__:
         readline.parse_and_bind("bind ^I rl_complete")
     else:
         readline.parse_and_bind("tab: complete")
-    # --------------------------------------
     
+    ## SECTION: Main Shell Loop
     while True:
         try:
-            # Readline handles the prompt and allows the user to keep typing
             user_input = input("$ ")
         except EOFError:
             break
@@ -64,6 +58,7 @@ def main():
         output_file = None
         error_file = None
         
+        ## SECTION: Redirection Parsing
         if "2>>" in parts:
             idx = parts.index("2>>")
             filename = parts[idx + 1]
@@ -99,7 +94,7 @@ def main():
         t_stdout = output_file if output_file else sys.stdout
         t_stderr = error_file if error_file else sys.stderr
         
-        # --- Command Execution ---
+        ## SECTION: Builtin Command Execution
         if cmd == "exit":
             if output_file: output_file.close()
             if error_file: error_file.close()
@@ -137,14 +132,15 @@ def main():
                 t_stdout.write(msg)
                 t_stdout.flush()
                 
+        ## SECTION: External Command Execution
         else:
             if shutil.which(cmd):
-                # subprocess.run handles its own pipe management
                 subprocess.run(parts, stdout=t_stdout, stderr=t_stderr)
             else:
                 t_stderr.write(f"{cmd}: not found\n")
                 t_stderr.flush()
         
+        ## SECTION: Cleanup and File Syncing
         if output_file:
             output_file.flush()
             os.fsync(output_file.fileno()) 
@@ -154,7 +150,7 @@ def main():
             os.fsync(error_file.fileno())
             error_file.close()
     
-
+## SECTION: Argument Parsing and Quoting Logic
 def parse_args(input_str):
     args = []
     current = []
@@ -202,4 +198,3 @@ def parse_args(input_str):
 
 if __name__ == "__main__":
     main()
-    
