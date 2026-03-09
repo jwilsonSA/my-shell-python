@@ -7,21 +7,35 @@ import readline
 def main():
     builtins = ["echo", "exit", "type", "pwd", "cd"]
         
+    # --- Advanced Autocompletion Logic ---
     def completer(text, state):
+        # Get the entire line typed so far
+        buffer = readline.get_line_buffer()
+        
+        # If there's a space in the buffer, the user is typing arguments.
+        # We only want to autocomplete the command (the first word).
+        if " " in buffer.lstrip():
+            return None
+
+        # Otherwise, match against builtins
         options = [i for i in builtins if i.startswith(text)]
         if state < len(options):
             return options[state] + " "
-        else:
-            return None
-        
+        return None
+
     readline.set_completer(completer)
+    # Ensure delimiters don't include spaces so 'echo ' is treated as one completed unit
+    readline.set_completer_delims('\t\n') 
+    
     if 'libedit' in readline.__doc__:
         readline.parse_and_bind("bind ^I rl_complete")
     else:
         readline.parse_and_bind("tab: complete")
+    # --------------------------------------
     
     while True:
         try:
+            # Readline handles the prompt and allows the user to keep typing
             user_input = input("$ ")
         except EOFError:
             break
@@ -174,3 +188,4 @@ def parse_args(input_str):
 
 if __name__ == "__main__":
     main()
+    
