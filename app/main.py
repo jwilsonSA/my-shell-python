@@ -18,20 +18,36 @@ def main():
             continue
         
         parts = parse_args(user_input)
-
         if not parts:
             continue
-
+        
+        output_file = None
+        
+        if ">" in parts or "1>" in parts:
+            try:
+                idx = parts.index(">") if ">" in parts else parts.index("1>")
+                
+                filename = parts[idx + 1]
+                output_file = open(filename, "w")
+                
+                parts = parts[:idx] + parts[idx+2:]
+            except IndexError:
+                print("shell: syntax error near unexpected token `newline'")
+                continue
+            
         cmd = parts[0]
         
+        target_stdout = output_file if output_file else sys.stdout 
+        
         if cmd == "exit":
+            if output_file: output_file.close()
             sys.exit(0) 
             
         elif cmd == "echo":
-            print(*(parts[1:]))
+            print(*(parts[1:]), file=target_stdout)
             
         elif cmd == "pwd":
-            print(os.getcwd())
+            print(os.getcwd(), file=target_stdout)
             
         elif cmd == "cd":
             if len(parts) > 1:
@@ -39,7 +55,7 @@ def main():
                 try:
                     os.chdir(target_path)
                 except FileNotFoundError:
-                    print(f"cd: {target_path}: No such file or directory")
+                    sys.stderr.write(f"cd: {target_path}: No such file or directory\n")
             else:
                 os.chdir(os.path.expanduser("~"))
             
@@ -57,9 +73,12 @@ def main():
                 
         else:
             if shutil.which(cmd):
-                subprocess.run(parts)
+                subprocess.run(parts, stdout=target_stdout)
             else:
                 print(f"{cmd}: not found")
+                
+        if output_file:
+            output_file.close()
     
 
 def parse_args(input_str):
@@ -82,7 +101,6 @@ def parse_args(input_str):
                 current.append(char)
         elif quote == '"':
             if char == '\\':
-                # Double quotes ONLY escape these specific characters in POSIX
                 if i + 1 < len(input_str) and input_str[i+1] in ('$', '`', '"', '\\', '\n'):
                     escaped = True
                 else:
