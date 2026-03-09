@@ -22,32 +22,49 @@ def main():
             continue
         
         output_file = None
+        error_file = None
+        
+        # --- Redirection Logic ---
+        if "2>" in parts:
+            idx = parts.index("2>")
+            filename = parts[idx + 1]
+            parent_dir = os.path.dirname(filename)
+            if parent_dir:
+                os.makedirs(parent_dir, exist_ok=True)
+            error_file = open(filename, "w")
+            parts = parts[:idx] + parts[idx+2:]
         
         if ">" in parts or "1>" in parts:
-            try:
-                idx = parts.index(">") if ">" in parts else parts.index("1>")
-                
-                filename = parts[idx + 1]
-                output_file = open(filename, "w")
-                
-                parts = parts[:idx] + parts[idx+2:]
-            except IndexError:
-                print("shell: syntax error near unexpected token `newline'")
-                continue
+            idx = parts.index(">") if ">" in parts else parts.index("1>")
+            filename = parts[idx + 1]
+            parent_dir = os.path.dirname(filename)
+            if parent_dir:
+                os.makedirs(parent_dir, exist_ok=True)
+            output_file = open(filename, "w")
+            parts = parts[:idx] + parts[idx+2:]
             
+        if not parts: 
+            if output_file: output_file.close()
+            if error_file: error_file.close()
+            continue
+
         cmd = parts[0]
         
-        target_stdout = output_file if output_file else sys.stdout 
+        # Standardize output streams
+        t_stdout = output_file if output_file else sys.stdout
+        t_stderr = error_file if error_file else sys.stderr
         
+        # --- Command Execution ---
         if cmd == "exit":
             if output_file: output_file.close()
+            if error_file: error_file.close()
             sys.exit(0) 
             
         elif cmd == "echo":
-            print(*(parts[1:]), file=target_stdout)
+            print(*(parts[1:]), file=t_stdout)
             
         elif cmd == "pwd":
-            print(os.getcwd(), file=target_stdout)
+            print(os.getcwd(), file=t_stdout)
             
         elif cmd == "cd":
             if len(parts) > 1:
@@ -55,7 +72,7 @@ def main():
                 try:
                     os.chdir(target_path)
                 except FileNotFoundError:
-                    sys.stderr.write(f"cd: {target_path}: No such file or directory\n")
+                    t_stderr.write(f"cd: {target_path}: No such file or directory\n")
             else:
                 os.chdir(os.path.expanduser("~"))
             
@@ -63,22 +80,22 @@ def main():
             if len(parts) > 1:
                 target = parts[1]
                 if target in builtins:
-                    print(f"{target} is a shell builtin")
+                    print(f"{target} is a shell builtin", file=t_stdout)
                 elif path := shutil.which(target):
-                    print(f"{target} is {path}")
+                    print(f"{target} is {path}", file=t_stdout)
                 else:
-                    print(f"{target}: not found")
-            else:
-                pass
+                    print(f"{target}: not found", file=t_stdout)
                 
         else:
             if shutil.which(cmd):
-                subprocess.run(parts, stdout=target_stdout)
+                # Pass BOTH streams to subprocess
+                subprocess.run(parts, stdout=t_stdout, stderr=t_stderr)
             else:
-                print(f"{cmd}: not found")
-                
-        if output_file:
-            output_file.close()
+                t_stderr.write(f"{cmd}: not found\n")
+        
+        # Cleanup
+        if output_file: output_file.close()
+        if error_file: error_file.close()
     
 
 def parse_args(input_str):
@@ -89,42 +106,4 @@ def parse_args(input_str):
 
     i = 0
     while i < len(input_str):
-        char = input_str[i]
-
-        if escaped:
-            current.append(char)
-            escaped = False
-        elif quote == "'":
-            if char == "'":
-                quote = None
-            else:
-                current.append(char)
-        elif quote == '"':
-            if char == '\\':
-                if i + 1 < len(input_str) and input_str[i+1] in ('$', '`', '"', '\\', '\n'):
-                    escaped = True
-                else:
-                    current.append(char)
-            elif char == '"':
-                quote = None
-            else:
-                current.append(char)
-        else:
-            if char == '\\':
-                escaped = True
-            elif char in ("'", '"'):
-                quote = char
-            elif char == ' ':
-                if current:
-                    args.append("".join(current))
-                    current = []
-            else:
-                current.append(char)
-        i += 1
-
-    if current:
-        args.append("".join(current))
-    return args
-
-if __name__ == "__main__":
-    main()
+        char
