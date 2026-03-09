@@ -2,18 +2,27 @@ import os
 import sys
 import shutil
 import subprocess
+import readline
 
 def main():
     builtins = ["echo", "exit", "type", "pwd", "cd"]
         
-    while True:
-        # Using sys.stdout.write + flush is standard, but some testers 
-        # prefer the prompt to be very explicitly flushed before input.
-        sys.stdout.write("$ ")
-        sys.stdout.flush()
+    def completer(text, state):
+        options = [i for i in builtins if i.startswith(text)]
+        if state < len(options):
+            return options[state] + " "
+        else:
+            return None
         
+    readline.set_completer(completer)
+    if 'libedit' in readline.__doc__:
+        readline.parse_and_bind("bind ^I rl_complete")
+    else:
+        readline.parse_and_bind("tab: complete")
+    
+    while True:
         try:
-            user_input = input()
+            user_input = input("$ ")
         except EOFError:
             break
             
@@ -24,36 +33,33 @@ def main():
         if not parts:
             continue
         
-       # --- Updated Redirection Logic for Append Support ---
         output_file = None
         error_file = None
         
-        # 1. Handle stderr redirection (2> and 2>>)
         if "2>>" in parts:
             idx = parts.index("2>>")
             filename = parts[idx + 1]
             os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
-            error_file = open(filename, "a") # Append mode
+            error_file = open(filename, "a")
             parts = parts[:idx] + parts[idx+2:]
         elif "2>" in parts:
             idx = parts.index("2>")
             filename = parts[idx + 1]
             os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
-            error_file = open(filename, "w") # Overwrite mode
+            error_file = open(filename, "w")
             parts = parts[:idx] + parts[idx+2:]
         
-        # 2. Handle stdout redirection (>> and 1>>)
         if ">>" in parts or "1>>" in parts:
             idx = parts.index(">>") if ">>" in parts else parts.index("1>>")
             filename = parts[idx + 1]
             os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
-            output_file = open(filename, "a") # Append mode
+            output_file = open(filename, "a")
             parts = parts[:idx] + parts[idx+2:]
         elif ">" in parts or "1>" in parts:
             idx = parts.index(">") if ">" in parts else parts.index("1>")
             filename = parts[idx + 1]
             os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
-            output_file = open(filename, "w") # Overwrite mode
+            output_file = open(filename, "w")
             parts = parts[:idx] + parts[idx+2:]
             
         if not parts: 
@@ -111,7 +117,6 @@ def main():
                 t_stderr.write(f"{cmd}: not found\n")
                 t_stderr.flush()
         
-        # --- Cleanup & Hard Sync ---
         if output_file:
             output_file.flush()
             os.fsync(output_file.fileno()) 
