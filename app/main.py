@@ -24,31 +24,37 @@ def main():
         if not parts:
             continue
         
+       # --- Updated Redirection Logic for Append Support ---
         output_file = None
         error_file = None
         
-        # --- Redirection Logic ---
-        # Handle stderr redirection (2>)
-        if "2>" in parts:
+        # 1. Handle stderr redirection (2> and 2>>)
+        if "2>>" in parts:
+            idx = parts.index("2>>")
+            filename = parts[idx + 1]
+            os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
+            error_file = open(filename, "a") # Append mode
+            parts = parts[:idx] + parts[idx+2:]
+        elif "2>" in parts:
             idx = parts.index("2>")
-            if idx + 1 < len(parts):
-                filename = parts[idx + 1]
-                parent_dir = os.path.dirname(filename)
-                if parent_dir:
-                    os.makedirs(parent_dir, exist_ok=True)
-                error_file = open(filename, "w")
-                parts = parts[:idx] + parts[idx+2:]
+            filename = parts[idx + 1]
+            os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
+            error_file = open(filename, "w") # Overwrite mode
+            parts = parts[:idx] + parts[idx+2:]
         
-        # Handle stdout redirection (> or 1>)
-        if ">" in parts or "1>" in parts:
+        # 2. Handle stdout redirection (>> and 1>>)
+        if ">>" in parts or "1>>" in parts:
+            idx = parts.index(">>") if ">>" in parts else parts.index("1>>")
+            filename = parts[idx + 1]
+            os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
+            output_file = open(filename, "a") # Append mode
+            parts = parts[:idx] + parts[idx+2:]
+        elif ">" in parts or "1>" in parts:
             idx = parts.index(">") if ">" in parts else parts.index("1>")
-            if idx + 1 < len(parts):
-                filename = parts[idx + 1]
-                parent_dir = os.path.dirname(filename)
-                if parent_dir:
-                    os.makedirs(parent_dir, exist_ok=True)
-                output_file = open(filename, "w")
-                parts = parts[:idx] + parts[idx+2:]
+            filename = parts[idx + 1]
+            os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
+            output_file = open(filename, "w") # Overwrite mode
+            parts = parts[:idx] + parts[idx+2:]
             
         if not parts: 
             if output_file: output_file.close()
