@@ -7,7 +7,7 @@ import readline
 def main():
     builtins = ["echo", "exit", "type", "pwd", "cd"]
         
-    ## SECTION: Autocompletion Configuration (Common Prefix Support)
+    ## SECTION: Autocompletion Configuration (LCP and Partial Support)
     last_tab_text = [None]
     tab_count = [0]
 
@@ -36,15 +36,16 @@ def main():
         # 2. Find Longest Common Prefix (LCP)
         common_prefix = os.path.commonprefix(options)
 
-        # 3. Handle Completion
+        # 3. Handle Completion Logic
         if state == 0:
-            # If we can extend the current text with a common prefix
+            # Case A: We found a prefix longer than the current text
+            # This fills in "xyz_foo" even if "xyz_foo_bar" also exists
             if len(common_prefix) > len(text):
-                # Return the common prefix. Readline will update the display.
-                # If there's only 1 option, add the space.
-                return common_prefix + (" " if len(options) == 1 else "")
+                # Add a space ONLY if there is exactly one match
+                suffix = " " if len(options) == 1 else ""
+                return common_prefix + suffix
 
-            # 4. If we are already at the common prefix, handle Bell/Double-Tab
+            # Case B: Already at the LCP (The "Fork in the Road")
             if buffer == last_tab_text[0]:
                 tab_count[0] += 1
             else:
@@ -59,10 +60,10 @@ def main():
                 sys.stdout.write(f"$ {buffer}")
                 sys.stdout.flush()
         
-        # This state logic is for when readline asks for the next match index
         return None
 
-    readline.set_completer(completer) 
+    readline.set_completer(completer)
+    readline.set_completer_delims('\t\n') 
     
     if 'libedit' in readline.__doc__:
         readline.parse_and_bind("bind ^I rl_complete")
