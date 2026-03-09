@@ -7,7 +7,7 @@ import readline
 def main():
     builtins = ["echo", "exit", "type", "pwd", "cd"]
         
-    ## SECTION: Autocompletion Configuration (Multiple Match Support)
+    ## SECTION: Autocompletion Configuration (Common Prefix Support)
     last_tab_text = [None]
     tab_count = [0]
 
@@ -16,7 +16,7 @@ def main():
         if " " in buffer.lstrip():
             return None
 
-        # 1. Gather all unique candidates
+        # 1. Gather all candidates
         candidates = set(i for i in builtins if i.startswith(text))
         path_env = os.environ.get("PATH", "")
         for directory in path_env.split(":"):
@@ -30,16 +30,21 @@ def main():
                     continue
         
         options = sorted(list(candidates))
-
-        # 2. Logic for 0, 1, or Multiple matches
         if not options:
             return None
 
-        if len(options) == 1:
-            return options[state] + " " if state < 1 else None
+        # 2. Find Longest Common Prefix (LCP)
+        common_prefix = os.path.commonprefix(options)
 
-        # 3. Handle Multiple Matches (The Double-Tab Logic)
+        # 3. Handle Completion
         if state == 0:
+            # If we can extend the current text with a common prefix
+            if len(common_prefix) > len(text):
+                # Return the common prefix. Readline will update the display.
+                # If there's only 1 option, add the space.
+                return common_prefix + (" " if len(options) == 1 else "")
+
+            # 4. If we are already at the common prefix, handle Bell/Double-Tab
             if buffer == last_tab_text[0]:
                 tab_count[0] += 1
             else:
@@ -54,10 +59,10 @@ def main():
                 sys.stdout.write(f"$ {buffer}")
                 sys.stdout.flush()
         
+        # This state logic is for when readline asks for the next match index
         return None
 
-    readline.set_completer(completer)
-    readline.set_completer_delims('\t\n') 
+    readline.set_completer(completer) 
     
     if 'libedit' in readline.__doc__:
         readline.parse_and_bind("bind ^I rl_complete")
