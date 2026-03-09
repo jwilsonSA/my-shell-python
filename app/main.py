@@ -36,6 +36,16 @@ def main():
         if state < len(options):
             return options[state] + " "
         return None
+
+    readline.set_completer(completer)
+    # Ensure delimiters don't include spaces so 'echo ' is treated as one completed unit
+    readline.set_completer_delims('\t\n') 
+    
+    if 'libedit' in readline.__doc__:
+        readline.parse_and_bind("bind ^I rl_complete")
+    else:
+        readline.parse_and_bind("tab: complete")
+    # --------------------------------------
     
     while True:
         try:
