@@ -1,12 +1,14 @@
 import os
-import sys, shutil, shlex, subprocess
-
+import sys
+import shutil
+import subprocess
 
 def main():
     builtins = ["echo", "exit", "type", "pwd", "cd"]
         
     while True:
-        # 1. Always flush the prompt
+        # Using sys.stdout.write + flush is standard, but some testers 
+        # prefer the prompt to be very explicitly flushed before input.
         sys.stdout.write("$ ")
         sys.stdout.flush()
         
@@ -26,25 +28,28 @@ def main():
         error_file = None
         
         # --- Redirection Logic ---
+        # Handle stderr redirection (2>)
         if "2>" in parts:
             idx = parts.index("2>")
-            filename = parts[idx + 1]
-            parent_dir = os.path.dirname(filename)
-            if parent_dir:
-                os.makedirs(parent_dir, exist_ok=True)
-            error_file = open(filename, "w")
-            parts = parts[:idx] + parts[idx+2:]
+            if idx + 1 < len(parts):
+                filename = parts[idx + 1]
+                parent_dir = os.path.dirname(filename)
+                if parent_dir:
+                    os.makedirs(parent_dir, exist_ok=True)
+                error_file = open(filename, "w")
+                parts = parts[:idx] + parts[idx+2:]
         
+        # Handle stdout redirection (> or 1>)
         if ">" in parts or "1>" in parts:
             idx = parts.index(">") if ">" in parts else parts.index("1>")
-            filename = parts[idx + 1]
-            parent_dir = os.path.dirname(filename)
-            if parent_dir:
-                os.makedirs(parent_dir, exist_ok=True)
-            output_file = open(filename, "w")
-            parts = parts[:idx] + parts[idx+2:]
+            if idx + 1 < len(parts):
+                filename = parts[idx + 1]
+                parent_dir = os.path.dirname(filename)
+                if parent_dir:
+                    os.makedirs(parent_dir, exist_ok=True)
+                output_file = open(filename, "w")
+                parts = parts[:idx] + parts[idx+2:]
             
-        # If redirection stripped everything, clean up and go back to prompt
         if not parts: 
             if output_file: output_file.close()
             if error_file: error_file.close()
@@ -62,7 +67,7 @@ def main():
             
         elif cmd == "echo":
             print(*(parts[1:]), file=t_stdout)
-            t_stdout.flush() # Ensure it's written
+            t_stdout.flush()
             
         elif cmd == "pwd":
             print(os.getcwd(), file=t_stdout)
@@ -94,20 +99,20 @@ def main():
                 
         else:
             if shutil.which(cmd):
-                # Subprocess handles its own flushing on completion
+                # subprocess.run handles its own pipe management
                 subprocess.run(parts, stdout=t_stdout, stderr=t_stderr)
             else:
                 t_stderr.write(f"{cmd}: not found\n")
                 t_stderr.flush()
         
-        # --- Cleanup ---
+        # --- Cleanup & Hard Sync ---
         if output_file:
             output_file.flush()
-            os.fsync(output_file.fileno()) # Force write to disk
+            os.fsync(output_file.fileno()) 
             output_file.close()
         if error_file:
             error_file.flush()
-            os.fsync(error_file.fileno()) # Force write to disk
+            os.fsync(error_file.fileno())
             error_file.close()
     
 
@@ -119,4 +124,42 @@ def parse_args(input_str):
 
     i = 0
     while i < len(input_str):
-        char
+        char = input_str[i]
+
+        if escaped:
+            current.append(char)
+            escaped = False
+        elif quote == "'":
+            if char == "'":
+                quote = None
+            else:
+                current.append(char)
+        elif quote == '"':
+            if char == '\\':
+                if i + 1 < len(input_str) and input_str[i+1] in ('$', '`', '"', '\\', '\n'):
+                    escaped = True
+                else:
+                    current.append(char)
+            elif char == '"':
+                quote = None
+            else:
+                current.append(char)
+        else:
+            if char == '\\':
+                escaped = True
+            elif char in ("'", '"'):
+                quote = char
+            elif char == ' ':
+                if current:
+                    args.append("".join(current))
+                    current = []
+            else:
+                current.append(char)
+        i += 1
+
+    if current:
+        args.append("".join(current))
+    return args
+
+if __name__ == "__main__":
+    main()
