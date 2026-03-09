@@ -7,15 +7,17 @@ import readline
 def main():
     builtins = ["echo", "exit", "type", "pwd", "cd"]
         
-    ## SECTION: Autocompletion Configuration
+    ## SECTION: Autocompletion Configuration (Multiple Match Support)
+    last_tab_text = [None]
+    tab_count = [0]
+
     def completer(text, state):
         buffer = readline.get_line_buffer()
-        
         if " " in buffer.lstrip():
             return None
 
-        candidates = [i for i in builtins if i.startswith(text)]
-        
+        # 1. Gather all unique candidates
+        candidates = set(i for i in builtins if i.startswith(text))
         path_env = os.environ.get("PATH", "")
         for directory in path_env.split(":"):
             if os.path.isdir(directory):
@@ -23,14 +25,35 @@ def main():
                     for filename in os.listdir(directory):
                         full_path = os.path.join(directory, filename)
                         if filename.startswith(text) and os.access(full_path, os.X_OK):
-                            candidates.append(filename)
+                            candidates.add(filename)
                 except PermissionError:
                     continue
+        
+        options = sorted(list(candidates))
 
-        options = sorted(list(set(candidates)))
+        # 2. Logic for 0, 1, or Multiple matches
+        if not options:
+            return None
 
-        if state < len(options):
-            return options[state] + " "
+        if len(options) == 1:
+            return options[state] + " " if state < 1 else None
+
+        # 3. Handle Multiple Matches (The Double-Tab Logic)
+        if state == 0:
+            if buffer == last_tab_text[0]:
+                tab_count[0] += 1
+            else:
+                last_tab_text[0] = buffer
+                tab_count[0] = 1
+
+            if tab_count[0] == 1:
+                sys.stdout.write("\x07")
+                sys.stdout.flush()
+            elif tab_count[0] >= 2:
+                sys.stdout.write("\n" + "  ".join(options) + "\n")
+                sys.stdout.write(f"$ {buffer}")
+                sys.stdout.flush()
+        
         return None
 
     readline.set_completer(completer)
