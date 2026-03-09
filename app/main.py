@@ -7,31 +7,35 @@ import readline
 def main():
     builtins = ["echo", "exit", "type", "pwd", "cd"]
         
-    # --- Advanced Autocompletion Logic ---
+    # --- PATH-Aware Autocompletion Logic ---
     def completer(text, state):
-        # Get the entire line typed so far
         buffer = readline.get_line_buffer()
         
-        # If there's a space in the buffer, the user is typing arguments.
-        # We only want to autocomplete the command (the first word).
+        # Only autocomplete the first word (the command)
         if " " in buffer.lstrip():
             return None
 
-        # Otherwise, match against builtins
-        options = [i for i in builtins if i.startswith(text)]
+        # 1. Start with builtins
+        candidates = [i for i in builtins if i.startswith(text)]
+        
+        # 2. Add executables from PATH
+        path_env = os.environ.get("PATH", "")
+        for directory in path_env.split(":"):
+            if os.path.isdir(directory):
+                try:
+                    for filename in os.listdir(directory):
+                        full_path = os.path.join(directory, filename)
+                        if filename.startswith(text) and os.access(full_path, os.X_OK):
+                            candidates.append(filename)
+                except PermissionError:
+                    continue
+
+        # 3. Deduplicate and sort
+        options = sorted(list(set(candidates)))
+
         if state < len(options):
             return options[state] + " "
         return None
-
-    readline.set_completer(completer)
-    # Ensure delimiters don't include spaces so 'echo ' is treated as one completed unit
-    readline.set_completer_delims('\t\n') 
-    
-    if 'libedit' in readline.__doc__:
-        readline.parse_and_bind("bind ^I rl_complete")
-    else:
-        readline.parse_and_bind("tab: complete")
-    # --------------------------------------
     
     while True:
         try:
