@@ -6,6 +6,7 @@ def main():
     builtins = ["echo", "exit", "type", "pwd", "cd"]
         
     while True:
+        # 1. Always flush the prompt
         sys.stdout.write("$ ")
         sys.stdout.flush()
         
@@ -43,14 +44,13 @@ def main():
             output_file = open(filename, "w")
             parts = parts[:idx] + parts[idx+2:]
             
+        # If redirection stripped everything, clean up and go back to prompt
         if not parts: 
             if output_file: output_file.close()
             if error_file: error_file.close()
             continue
 
         cmd = parts[0]
-        
-        # Standardize output streams
         t_stdout = output_file if output_file else sys.stdout
         t_stderr = error_file if error_file else sys.stderr
         
@@ -62,9 +62,11 @@ def main():
             
         elif cmd == "echo":
             print(*(parts[1:]), file=t_stdout)
+            t_stdout.flush() # Ensure it's written
             
         elif cmd == "pwd":
             print(os.getcwd(), file=t_stdout)
+            t_stdout.flush()
             
         elif cmd == "cd":
             if len(parts) > 1:
@@ -73,29 +75,40 @@ def main():
                     os.chdir(target_path)
                 except FileNotFoundError:
                     t_stderr.write(f"cd: {target_path}: No such file or directory\n")
+                    t_stderr.flush()
             else:
                 os.chdir(os.path.expanduser("~"))
             
         elif cmd == "type":
             if len(parts) > 1:
                 target = parts[1]
+                msg = ""
                 if target in builtins:
-                    print(f"{target} is a shell builtin", file=t_stdout)
+                    msg = f"{target} is a shell builtin\n"
                 elif path := shutil.which(target):
-                    print(f"{target} is {path}", file=t_stdout)
+                    msg = f"{target} is {path}\n"
                 else:
-                    print(f"{target}: not found", file=t_stdout)
+                    msg = f"{target}: not found\n"
+                t_stdout.write(msg)
+                t_stdout.flush()
                 
         else:
             if shutil.which(cmd):
-                # Pass BOTH streams to subprocess
+                # Subprocess handles its own flushing on completion
                 subprocess.run(parts, stdout=t_stdout, stderr=t_stderr)
             else:
                 t_stderr.write(f"{cmd}: not found\n")
+                t_stderr.flush()
         
-        # Cleanup
-        if output_file: output_file.close()
-        if error_file: error_file.close()
+        # --- Cleanup ---
+        if output_file:
+            output_file.flush()
+            os.fsync(output_file.fileno()) # Force write to disk
+            output_file.close()
+        if error_file:
+            error_file.flush()
+            os.fsync(error_file.fileno()) # Force write to disk
+            error_file.close()
     
 
 def parse_args(input_str):
